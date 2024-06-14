@@ -29,6 +29,7 @@ from typing import Optional, Tuple, Union
 
 import draccus
 import torch
+torch.backends.cuda.matmul.allow_tf32 = True
 import torch.distributed as dist
 import yaml
 
@@ -72,14 +73,12 @@ class PretrainConfig:
     seed: int = 7                                                   # Random seed (for reproducibility)
 
     # HF Hub Credentials (for any gated models)
-    hf_token: Union[str, Path] = Path(".hf_token")                  # Environment variable or Path to HF Token
+    hf_token: Union[Path, str] = Path(".hf_token")                  # Environment variable or Path to HF Token
 
     # Tracking Parameters
-    trackers: Tuple[str, ...] = ("jsonl", "wandb")                  # Trackers to initialize (if W&B, add config!)
-    # wandb_project: str = "prismatic"                                # Name of W&B project (default: `prismatic`)
-    # wandb_entity: Optional[str] = None                              # Name of W&B entity (default: None)
-    wandb_project: str = "onyx-vlms"
-    wandb_entity: str = "stanford-voltron"
+    trackers: str = "jsonl,wandb"                                   # Trackers to initialize (if W&B, add config!)
+    wandb_project: str = "prismatic"                                # Name of W&B project (default: `prismatic`)
+    wandb_entity: Optional[str] = None                              # Name of W&B entity (default: None)
 
     def __post_init__(self) -> None:
         """Set optimization parameters based on `stage` in {"align", "finetune"}."""
@@ -145,8 +144,8 @@ def pretrain(cfg: PretrainConfig) -> None:
             yaml_cfg = yaml.safe_load(f_yaml)
             json.dump(yaml_cfg, f_json, indent=2)
 
-    # Load Vision Backbone --> on CPU, in Full Precision (initializing model, image_transform via TIMM)
-    overwatch.info(f"Loading Vision Backbone [bold]{cfg.model.vision_backbone_id}[/] via TIMM ")
+    # Load Vision Backbone --> on CPU, in Full Precision (initializing model, image_transform)
+    overwatch.info(f"Loading Vision Backbone [bold]{cfg.model.vision_backbone_id}[/]")
     vision_backbone, image_transform = get_vision_backbone_and_transform(
         cfg.model.vision_backbone_id, image_resize_strategy=cfg.model.image_resize_strategy
     )

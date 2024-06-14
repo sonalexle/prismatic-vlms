@@ -101,7 +101,7 @@ class WeightsBiasesTracker:
 class Metrics:
     def __init__(
         self,
-        active_trackers: Tuple[str, ...],
+        active_trackers: str,
         run_id: str,
         run_dir: Path,
         hparams: Dict[str, Any],
@@ -115,7 +115,7 @@ class Metrics:
 
         # Initialize Trackers
         self.trackers = []
-        for tracker_type in active_trackers:
+        for tracker_type in active_trackers.split(","):
             if tracker_type == "jsonl":
                 tracker = JSONLinesTracker(run_id, run_dir, hparams)
             elif tracker_type == "wandb":

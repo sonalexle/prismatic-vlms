@@ -38,7 +38,7 @@ class GenerateConfig:
     )
 
     # HF Hub Credentials (required for Gated Models like LLaMa-2)
-    hf_token: Union[str, Path] = Path(".hf_token")                      # Environment variable or Path to HF Token
+    hf_token: Union[Path, str] = Path(".hf_token")                      # Environment variable or Path to HF Token
 
     # Default Generation Parameters =>> subscribes to HuggingFace's GenerateMixIn API
     do_sample: bool = False
