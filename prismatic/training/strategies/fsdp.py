@@ -28,6 +28,7 @@ from torch.distributed.fsdp import (
 )
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 from torch.optim import AdamW
+from bitsandbytes.optim import PagedAdamW32bit
 from transformers.optimization import get_cosine_schedule_with_warmup
 
 from prismatic.models.vlms import PrismaticVLM
@@ -86,6 +87,7 @@ class FSDPStrategy(TrainingStrategy):
             self.fsdp_sharding_strategy = ShardingStrategy.HYBRID_SHARD
         else:
             raise ValueError(f"FSDP Sharding Strategy {sharding_strategy} is not supported!")
+        self.sharding_strategy = sharding_strategy
 
         assert state_dict_type == StateDictType.FULL_STATE_DICT, "Sharded state saving is not yet implemented!"
         self.fsdp_state_dict_type = state_dict_type
@@ -141,10 +143,6 @@ class FSDPStrategy(TrainingStrategy):
             fsdp_precision_policy = MixedPrecision(
                 param_dtype=torch.bfloat16, reduce_dtype=reduce_buffer_dtype, buffer_dtype=reduce_buffer_dtype
             )
-
-            # When running FSDP with a frozen vision backbone --> move to half precision!
-            overwatch.info("Casting Vision Backbone to *Half Precision* via `.to(dtype=...)`")
-            self.vlm.vision_backbone.to(dtype=self.vlm.vision_backbone.half_precision_dtype)
 
         else:
             # If we're not using mixed precision, everything is in default full precision!
@@ -210,7 +208,8 @@ class FSDPStrategy(TrainingStrategy):
             groups = [{"params": decay, "weight_decay": self.weight_decay}, {"params": no_decay, "weight_decay": 0.0}]
 
             # Create Optimizer & LR Scheduler
-            self.optimizer = AdamW(groups, lr=self.learning_rate)
+            # self.optimizer = AdamW(groups, lr=self.learning_rate)
+            self.optimizer = PagedAdamW32bit(groups, lr=self.learning_rate)
             self.lr_scheduler = get_cosine_schedule_with_warmup(self.optimizer, num_warmup_steps, num_training_steps)
             for param_group in self.optimizer.param_groups:
                 param_group["lr"] = 0.0
@@ -220,7 +219,7 @@ class FSDPStrategy(TrainingStrategy):
 
         # Finalize Setup =>> Log!
         overwatch.info(
-            "FSDP Full-Shard Strategy =>> Finalized Training Setup:\n"
+            f"FSDP {self.sharding_strategy} Strategy =>> Finalized Training Setup:\n"
             f"         |-> Global (Effective) Batch Size = {self.global_batch_size}\n"
             f"         |-> Per-Device Batch Size = {self.per_device_batch_size}\n"
             f"         |-> Distributed World Size = {overwatch.world_size()}\n"
