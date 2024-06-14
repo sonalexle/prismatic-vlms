@@ -6,6 +6,7 @@ Utility functions and PyTorch submodule definitions.
 
 import torch
 import torch.nn as nn
+from prismatic.models.backbones.vision.dhf.aggregation_network import AggregationNetwork
 
 
 # === Definitions for Various Projection Modules, with Signature :: [..., in_dim] --> [..., out_dim] ===
@@ -51,3 +52,13 @@ class FusedMLPProjector(nn.Module):
 
     def forward(self, fused_img_patches: torch.Tensor) -> torch.Tensor:
         return self.projector(fused_img_patches)
+
+
+class IdentityProjector(nn.Module):
+    """Identity projector, used for debugging and testing purposes."""
+    def __init__(self, vision_dim: int, llm_dim: int) -> None:
+        super().__init__()
+        self.projector = nn.Identity()
+
+    def forward(self, img_patches: torch.Tensor) -> torch.Tensor:
+        return self.projector(img_patches)

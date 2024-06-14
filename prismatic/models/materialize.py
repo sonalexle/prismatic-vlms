@@ -9,7 +9,13 @@ from typing import Optional, Tuple
 
 from transformers import PreTrainedTokenizerBase
 
-from prismatic.models.backbones.llm import LLaMa2LLMBackbone, LLMBackbone, MistralLLMBackbone, PhiLLMBackbone
+from prismatic.models.backbones.llm import (
+    LLaMa2LLMBackbone,
+    LLMBackbone,
+    MistralLLMBackbone,
+    PhiLLMBackbone,
+    Phi3LLMBackbone
+)
 from prismatic.models.backbones.vision import (
     CLIPViTBackbone,
     DinoCLIPViTBackbone,
@@ -18,6 +24,7 @@ from prismatic.models.backbones.vision import (
     ImageTransform,
     IN1KViTBackbone,
     SigLIPViTBackbone,
+    SDBackbone,
     VisionBackbone,
 )
 from prismatic.models.vlms import PrismaticVLM
@@ -47,6 +54,11 @@ VISION_BACKBONES = {
     # === Fused Backbones ===
     "dinoclip-vit-l-336px": {"cls": DinoCLIPViTBackbone, "kwargs": {"default_image_size": 336}},
     "dinosiglip-vit-so-384px": {"cls": DinoSigLIPViTBackbone, "kwargs": {"default_image_size": 384}},
+
+    # === SD Backbones ===
+    "sd1.5-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224}},
+    "sd1.5-single-layer-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224, "config_ver": "single-layer"}},
+    "sdxl-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224, "model_id": "stabilityai/stable-diffusion-xl-base-1.0"}},
 }
 
 
@@ -70,6 +82,9 @@ LLM_BACKBONES = {
 
     # === Phi-2 Backbone ===
     "phi-2-3b": {"cls": PhiLLMBackbone, "kwargs": {}},
+
+    # === Phi-3 Backbone ===
+    "phi3_instruct": {"cls": Phi3LLMBackbone, "kwargs": {}},
 }
 
 # fmt: on

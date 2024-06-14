@@ -11,6 +11,7 @@ Notes:
 
 from __future__ import annotations
 
+import math
 from functools import partial
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Type, Union
@@ -25,7 +26,7 @@ from prismatic.models.backbones.llm.prompting import PromptBuilder
 from prismatic.models.backbones.vision import VisionBackbone
 from prismatic.models.vlms.base_vlm import VLM
 from prismatic.overwatch import initialize_overwatch
-from prismatic.util.nn_utils import FusedMLPProjector, LinearProjector, MLPProjector
+from prismatic.util.nn_utils import FusedMLPProjector, LinearProjector, MLPProjector, IdentityProjector, AggregationNetwork
 
 # Initialize Overwatch =>> Wraps `logging.Logger`
 overwatch = initialize_overwatch(__name__)
@@ -57,12 +58,27 @@ class PrismaticVLM(VLM):
 
         # Initialize Projection (Adapter) based on `arch_specifier`
         self.arch_specifier = arch_specifier
+        vision_backbone.use_aggregation_net = False
         if arch_specifier == "linear":
             self.projector = LinearProjector(vision_backbone.embed_dim, llm_backbone.embed_dim)
         elif arch_specifier.endswith("fused-gelu-mlp"):
             self.projector = FusedMLPProjector(vision_backbone.embed_dim, llm_backbone.embed_dim)
         elif arch_specifier.endswith("gelu-mlp"):
             self.projector = MLPProjector(vision_backbone.embed_dim, llm_backbone.embed_dim)
+        elif "identity" in arch_specifier:
+            self.projector = IdentityProjector(vision_backbone.embed_dim, llm_backbone.embed_dim)
+        elif "aggregation" in arch_specifier:
+            # NOTE: we don't pass `vision_backbone.embed_dim` here
+            self.projector = AggregationNetwork(
+                vision_backbone.feature_dims,
+                projection_dim=llm_backbone.embed_dim,
+                reshape_outputs=vision_backbone.use_resampler,
+                bottleneck_sequential=not vision_backbone.use_time_emb,
+                final_resolution=int(math.sqrt(vision_backbone.num_patches)),
+                input_resolution=vision_backbone.output_resolution
+            )
+            vision_backbone.use_aggregation_net = True
+            overwatch.info(f"Aggregation Network Projection Enabled, #params: {self.projector.get_num_params()}")
         else:
             raise ValueError(f"PrismaticVLM with `{arch_specifier = }` is not supported!")
 
@@ -209,11 +225,18 @@ class PrismaticVLM(VLM):
             return
 
         # [Contract] If no `pretrained_checkpoint`, assume `align` lives in the run directory; string substitution!
-        model, scale, _, seed = run_dir.name.split("+")
+        parts = run_dir.name.split("+")
+        if len(parts) == 4:
+            model, scale, _, seed = parts
+        elif len(parts) == 5:
+            data_mix, model, scale, _, seed = parts
+        else:
+            raise NotImplementedError(f"Invalid align run dir {parts}")
         align_dirs = [
             d
             for d in run_dir.parent.iterdir()
-            if (d.name.startswith(f"{model}+{scale}") and d.name.endswith(f"+stage-align+{seed}"))
+            if ((d.name.startswith(f"{model}+{scale}") or d.name.startswith(f"{data_mix}+{model}+{scale}")) and \
+            d.name.endswith(f"+stage-align+{seed}"))
         ]
         assert len(align_dirs) == 1, "Multiple or No Valid Pretrained Directories Exist -- Double Check `runs`!"
         if (pretrained_checkpoint := (align_dirs[0] / "checkpoints" / "latest-checkpoint.pt")).exists():
@@ -231,7 +254,7 @@ class PrismaticVLM(VLM):
         # Get Prismatic Wrapping Policy =>> just a module wrapping policy around `self.projector`
         prismatic_fsdp_wrapping_policy = partial(
             _module_wrap_policy,
-            module_classes={LinearProjector, MLPProjector, FusedMLPProjector},
+            module_classes={LinearProjector, MLPProjector, FusedMLPProjector, AggregationNetwork},
         )
 
         # Return union (_or_) over constituent policies
@@ -266,6 +289,7 @@ class PrismaticVLM(VLM):
     ) -> CausalLMOutputWithPast:
         """Run a forward pass through the VLM, returning a CausalLMOutputWithPast instance (contains loss)."""
 
+        self.vision_backbone.eval_mode = not self.training
         # Handle Inference (leverage cache, short-circuit on just LLM forward)
         if input_ids.shape[1] == 1 and past_key_values is not None:
             # We're leveraging the cache, so just redirect to `self.llm_backbone` with `input_ids` and `past_key_values`
@@ -313,7 +337,11 @@ class PrismaticVLM(VLM):
                 patch_features = self.vision_backbone(pixel_values[multimodal_indices])
 
         # Projection Logic :: [bsz, num_patches, llm_embed_dim] =>> num_patches = (2 *) (256 + 1) for ViT-L + CLS
-        projected_patch_embeddings = self.projector(patch_features)
+        if isinstance(patch_features, tuple):
+            projected_patch_embeddings = self.projector(*patch_features)
+        else:
+            assert isinstance(patch_features, torch.Tensor), f"Invalid `patch_features` type, got {type(patch_features)}"
+            projected_patch_embeddings = self.projector(patch_features)
         projected_patch_attention_mask = None
         if attention_mask is not None:
             projected_patch_attention_mask = torch.full(

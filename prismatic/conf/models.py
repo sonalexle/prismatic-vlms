@@ -489,6 +489,82 @@ class Prism_7B_DINOSigLIP_224px(Exp_7B_One_Stage):
     finetune_epochs: int = 2
 
 
+# My custom models
+@dataclass
+class DINO_SigLIP_Phi3(Exp_7B_One_Stage):
+    model_id: str = "dinosiglip-224px-phi3+4b"
+    vision_backbone_id: str = "dinosiglip-vit-so-224px"
+    image_resize_strategy: str = "resize-naive"
+    llm_backbone_id: str = "phi3_instruct"
+    llm_max_length = 4096
+
+
+@dataclass
+class SigLIP_Phi3(Exp_7B_One_Stage):
+    model_id: str = "siglip-224px-phi3+4b"
+    vision_backbone_id: str = "siglip-vit-so400m"
+    image_resize_strategy: str = "resize-naive"
+    llm_backbone_id: str = "phi3_instruct"
+
+
+@dataclass
+class DINO_Phi3(Exp_7B_One_Stage):
+    model_id: str = "dino-224px-phi3+4b"
+    vision_backbone_id: str = "dinov2-vit-l"
+    image_resize_strategy: str = "resize-naive"
+    llm_backbone_id: str = "phi3_instruct"
+
+
+@dataclass
+class SD_V1_5_224px_Phi2(LLaVa_v15_Reproduction_7B):
+    model_id: str = "sd1.5-224px-phi2+3b"
+    vision_backbone_id: str = "sd1.5-224px"
+    image_resize_strategy: str = "resize-naive"
+    arch_specifier: str = "aggregation"
+    llm_backbone_id: str = "phi-2-3b"
+    # align_global_batch_size: int = 64
+    # align_per_device_batch_size: int = 8
+    # finetune_global_batch_size: int = 32
+    # finetune_per_device_batch_size: int = 4
+    # use_half_precision_all: bool = True
+
+
+@dataclass
+class SD_V1_5_224px_Phi3(LLaVa_v15_Reproduction_7B):
+    model_id: str = "sd1.5-224px-phi3+4b"
+    vision_backbone_id: str = "sd1.5-224px"
+    image_resize_strategy: str = "resize-naive"
+    arch_specifier: str = "aggregation"
+    llm_backbone_id: str = "phi3_instruct"
+    align_global_batch_size: int = 64
+    align_per_device_batch_size: int = 8
+    align_train_strategy: str = "fsdp-full-shard"
+    finetune_global_batch_size: int = 32
+    finetune_per_device_batch_size: int = 4
+    finetune_train_strategy: str = "fsdp-full-shard"
+    # use_half_precision_all: bool = True
+
+
+@dataclass
+class SD_V1_5_Single_Layer_224px_Phi3(SD_V1_5_224px_Phi3):
+    model_id: str = "sd1.5-single-layer-224px-phi3+4b"
+    vision_backbone_id: str = "sd1.5-single-layer-224px"
+    arch_specifier: str = "gelu-mlp"
+
+
+@dataclass
+class SDXL_224px(Exp_7B_One_Stage):
+    model_id: str = "sdxl-224px-phi3+4b"
+    vision_backbone_id: str = "sdxl-224px"
+    image_resize_strategy: str = "resize-naive"
+    llm_backbone_id: str = "phi3_instruct"
+    arch_specifier: str = "no-align+aggregation"
+    # llm_max_length = 2048
+    finetune_global_batch_size: int = 1
+    finetune_per_device_batch_size: int = 1
+    # use_half_precision_all: bool = True
+
+
 # === Define a Model Registry Enum for Reference & Validation ===
 @unique
 class ModelRegistry(Enum):
@@ -565,6 +641,15 @@ class ModelRegistry(Enum):
     # === Inference Optimized :: 224px Prism Models ===
     PRISM_DINOSIGLIP_224PX_CONTROLLED_7B = Prism_7B_DINOSigLIP_224px_Controlled
     PRISM_DINOSIGLIP_224PX_7B = Prism_7B_DINOSigLIP_224px
+
+    # === My custom models ===
+    DINOSIGLIP_224PX_PHI3 = DINO_SigLIP_Phi3
+    SIGLIP_224PX_PHI3 = SigLIP_Phi3
+    DINO_224PX_PHI3 = DINO_Phi3
+    SDV15_224PX_PHI2 = SD_V1_5_224px_Phi2
+    SDV15_SINGLE_LAYER_224PX_PHI3 = SD_V1_5_Single_Layer_224px_Phi3
+    SDV15_224PX_PHI3 = SD_V1_5_224px_Phi3
+    SDXL_224PX = SDXL_224px
 
     @property
     def model_id(self) -> str:
