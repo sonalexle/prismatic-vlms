@@ -42,7 +42,7 @@ from pathlib import Path
 from tqdm import tqdm
 
 # === Constants ===
-BASE_DIR = Path("data/download/llava-v1.5-instruct")
+BASE_DIR = Path("../data/llava-prismatic-train/download/llava-v1.5-instruct")
 LRV_DIR = BASE_DIR / "lrv"
 
 VG_JSON_FILES, VG_IMG_DIR = [LRV_DIR / "filter_cap1.json", LRV_DIR / "filter_cap_more1.json"], LRV_DIR / "lrv-vg"
