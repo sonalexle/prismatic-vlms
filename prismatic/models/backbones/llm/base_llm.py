@@ -26,6 +26,8 @@ from transformers.modeling_outputs import CausalLMOutputWithPast
 from prismatic.models.backbones.llm.prompting import PromptBuilder
 from prismatic.overwatch import initialize_overwatch
 
+from peft import get_peft_model, LoraConfig
+
 # Suppress HF Deprecation Warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -50,7 +52,7 @@ class LLMBackbone(nn.Module, ABC):
     def get_fsdp_wrapping_policy(self) -> Callable: ...
 
     @abstractmethod
-    def enable_gradient_checkpointing(self) -> None: ...
+    def gradient_checkpointing_enable(self) -> None: ...
 
     @abstractmethod
     def forward(
@@ -105,6 +107,8 @@ class HFCausalLLMBackbone(LLMBackbone, ABC):
         hf_token: Optional[str] = None,
         inference_mode: bool = False,
         use_flash_attention_2: bool = False,
+        enable_peft = False,
+        lora_peft_config: Optional[LoraConfig] = None,
     ) -> None:
         super().__init__(llm_backbone_id)
         self.llm_family = llm_family
@@ -124,12 +128,19 @@ class HFCausalLLMBackbone(LLMBackbone, ABC):
                 temperature=1.0,
                 top_p=1.0,
             )
+            if enable_peft == True:
+                overwatch.info(f"Enabling LoRA PEFT for [bold]{llm_family}[/] LLM from [underline]`{hf_hub_path}`[/]", ctx_level=1)
+                self.llm = get_peft_model(self.llm, lora_peft_config)
 
         # [Contract] `inference_mode` means we're loading from a pretrained checkpoint; no need to load base weights!
         else:
             overwatch.info(f"Building empty [bold]{llm_family}[/] LLM from [underline]`{hf_hub_path}`[/]", ctx_level=1)
             llm_config = AutoConfig.from_pretrained(hf_hub_path, token=hf_token)
-            self.llm = llm_cls._from_config(llm_config)
+            self.llm = llm_cls._from_config(llm_config, use_flash_attention_2=use_flash_attention_2)
+
+            if enable_peft == True:
+                overwatch.info(f"Enabling LoRA PEFT for [bold]{llm_family}[/] LLM from [underline]`{hf_hub_path}`[/]", ctx_level=1)
+                self.llm = get_peft_model(self.llm, lora_peft_config)
 
         # Lightweight Handling (with extended explanation) for setting some LLM Parameters
         #   => Set `decoder.use_cache = False` --> incompatible with gradient checkpointing (+ training in general)
@@ -189,7 +200,7 @@ class HFCausalLLMBackbone(LLMBackbone, ABC):
 
         return transformer_block_policy
 
-    def enable_gradient_checkpointing(self) -> None:
+    def gradient_checkpointing_enable(self) -> None:
         """Dispatch to underlying LLM instance's `gradient_checkpointing_enable`; defined for all `PretrainedModel`."""
         self.llm.gradient_checkpointing_enable()
 
