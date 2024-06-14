@@ -38,6 +38,8 @@ class VLM(nn.Module, GenerationMixin, ABC):
         enable_mixed_precision_training: bool = True,
     ) -> None:
         super().__init__()
+        if not hasattr(self, "_supports_cache_class"):
+            self._supports_cache_class = False
         self.model_family, self.model_id = model_family, model_id
         self.vision_backbone, self.llm_backbone = vision_backbone, llm_backbone
         self.enable_mixed_precision_training = enable_mixed_precision_training
