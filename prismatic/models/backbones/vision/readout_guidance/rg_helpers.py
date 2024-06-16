@@ -33,7 +33,6 @@ from diffusers import (
 )
 
 from prismatic.models.backbones.vision.dhf.aggregation_network import AggregationNetwork
-from prismatic.models.backbones.vision.dhf.stable_diffusion.resnet import collect_feats
 
 
 from diffusers.utils import USE_PEFT_BACKEND, scale_lora_layers, unscale_lora_layers
@@ -142,31 +141,42 @@ def get_prompts_latents(pipeline, prompt, batch_size, seed, latent_dim, device, 
 # =========================================
 #    Features, Latents, and Text Context
 # =========================================
-def resize(x, old_res, new_res, mode):
-    # (batch_size, width * height, channels)
-    batch_size, size, channels = x.shape
-    x = x.reshape((batch_size, *old_res, channels))
-    x = einops.rearrange(x, 'b h w c -> b c h w')
-    x = torch.nn.functional.interpolate(x, size=new_res, mode=mode)
-    x = einops.rearrange(x, 'b c h w -> b h w c')
-    return x
+# def resize(x, old_res, new_res, mode):
+#     # (batch_size, width * height, channels)
+#     batch_size, size, channels = x.shape
+#     x = x.reshape((batch_size, *old_res, channels))
+#     x = einops.rearrange(x, 'b h w c -> b c h w')
+#     x = torch.nn.functional.interpolate(x, size=new_res, mode=mode)
+#     x = einops.rearrange(x, 'b c h w -> b h w c')
+#     return x
+
 
 def resize_feat(feat, new_res, resize_mode="bilinear"):
-    old_res = feat.shape[2:]
-    feat = einops.rearrange(feat, 'b c h w -> b (h w) c')
-    feat = resize(feat, old_res=old_res, new_res=new_res, mode=resize_mode)
+    # check if the feat is actually a 4D tensor
+    if len(feat.shape) == 4:
+        pass # feat shape (b c h w)
+    elif len(feat.shape) == 3: # then we are dealing with a flattened feature
+        old_res = feat.shape[1] ** 0.5 # feat shape (b hw c)
+        assert old_res.is_integer(), "Feature shape is not square"
+        old_res = int(old_res)
+        feat = einops.rearrange(feat, 'b (h w) c -> b c h w', h=old_res, w=old_res)
+    else:
+        raise ValueError(f"Feature shape {feat.shape} not supported.")
+
+    feat = torch.nn.functional.interpolate(feat, size=new_res, mode=resize_mode)
+    feat = einops.rearrange(feat, 'b c h w -> b h w c')
+
     return feat
 
-def collect_and_resize_feats(model, idxs, latent_dim=None):
+
+def collect_and_resize_feats(model, idxs, collect_feats_fn, latent_dim=None):
     if model is None:
         return None
-    feature_store = {"up": collect_feats(model.unet, idxs=idxs)}
+    feature_store = {"up": collect_feats_fn(model.unet, idxs=idxs)}
     feats = []
     max_feat_res = max([feat.shape[-1] for feat in feature_store["up"]]) if latent_dim is None else latent_dim
     for key in feature_store:
         for i, feat in enumerate(feature_store[key]):
-            # print(f"feat shape: {feat.shape}")
-            # feat = resize_feat(feat, new_res=latent_dim)
             feat = resize_feat(feat, new_res=(max_feat_res, max_feat_res))
             feats.append(feat)
     # Concatenate all layers along the channel

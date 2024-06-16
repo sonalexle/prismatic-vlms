@@ -553,6 +553,20 @@ class SD_V1_5_Single_Layer_224px_Phi3(SD_V1_5_224px_Phi3):
 
 
 @dataclass
+class SD_V1_5_Upblock_Outputs_224px_Phi3(SD_V1_5_224px_Phi3):
+    model_id: str = "sd1.5-upblock-outputs-224px-phi3+4b"
+    vision_backbone_id: str = "sd1.5-upblock-outputs-224px"
+    arch_specifier: str = "gelu-mlp"
+
+
+@dataclass
+class SD_V1_5_CrossAttn_Query_224px_Phi3(SD_V1_5_224px_Phi3):
+    model_id: str = "sd1.5-crossattn-query-224px-phi3+4b"
+    vision_backbone_id: str = "sd1.5-crossattn-query-224px"
+    arch_specifier: str = "gelu-mlp"
+
+
+@dataclass
 class SDXL_224px(Exp_7B_One_Stage):
     model_id: str = "sdxl-224px-phi3+4b"
     vision_backbone_id: str = "sdxl-224px"
@@ -648,6 +662,8 @@ class ModelRegistry(Enum):
     DINO_224PX_PHI3 = DINO_Phi3
     SDV15_224PX_PHI2 = SD_V1_5_224px_Phi2
     SDV15_SINGLE_LAYER_224PX_PHI3 = SD_V1_5_Single_Layer_224px_Phi3
+    SDV15_UPBLOCK_OUTPUTS_224PX_PHI3 = SD_V1_5_Upblock_Outputs_224px_Phi3
+    SDV15_CROSSATTN_QUERY_224PX_PHI3 = SD_V1_5_CrossAttn_Query_224px_Phi3
     SDV15_224PX_PHI3 = SD_V1_5_224px_Phi3
     SDXL_224PX = SDXL_224px
 

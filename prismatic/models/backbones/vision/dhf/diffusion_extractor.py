@@ -26,10 +26,14 @@ import numpy as np
 import torch
 import torch.nn as nn
 from typing import Optional, List
+from PIL import Image
 
 from prismatic.models.backbones.vision.dhf.stable_diffusion.diffusion import generalized_steps
-from prismatic.models.backbones.vision.dhf.stable_diffusion.resnet import init_resnet_func, collect_channels
+from prismatic.models.backbones.vision.dhf.stable_diffusion.resnet import init_resnet_func, collect_resnet_feats
+from prismatic.models.backbones.vision.dhf.stable_diffusion.unet_patch import init_unet_block_func, collect_block_feats
+from prismatic.models.backbones.vision.dhf.stable_diffusion.attention_patch import init_cross_attn_func, collect_attention_feats
 from prismatic.models.backbones.vision.readout_guidance import rg_helpers
+
 
 class DiffusionExtractor(nn.Module):
     def __init__(self, **config):
@@ -68,14 +72,26 @@ class DiffusionExtractor(nn.Module):
 
         ## Hyperparameters ##
         self.diffusion_mode: str = config.pop("diffusion_mode", "generation")
-        self.save_mode: str = config.pop("save_mode", "hidden") # which resnet representation to save, input, hidden, output
+        # which representation to save:
+        # resnet_input, resnet_hidden, resnet_output,
+        # block_input, block_output
+        # crossattn_input, crossattn_output, crossattn_query
+        self.save_mode: str = config.pop("save_mode", "resnet_hidden")
+        if "resnet" in self.save_mode:
+            self.collect_feats_fn = collect_resnet_feats
+        elif "block" in self.save_mode:
+            self.collect_feats_fn = collect_block_feats
+        elif "crossattn" in self.save_mode:
+            self.collect_feats_fn = collect_attention_feats
+        else:
+            raise NotImplementedError(f"Save mode {self.save_mode} not supported.")
         # if eval mode, the timestep to save is fixed, otherwise randomly samples from [0, T-1]
         self.eval_mode: bool = config.pop("eval_mode", False)
         idxs = config.pop("idxs", None)
         self.idxs: Optional[List[int]] = None
         if idxs is not None:
             self.idxs = ast.literal_eval(idxs) # passed as a string
-        self.dims: List[int] = collect_channels(self.unet, idxs=self.idxs)
+        self.dims: List[int] = collect_channels(self)
 
     @torch.inference_mode()
     def change_cond(self, prompt, negative_prompt, batch_size=1):
@@ -95,9 +111,6 @@ class DiffusionExtractor(nn.Module):
             added_cond_kwargs = {}
         return context, added_cond_kwargs
 
-    def init_aux_embeds(self):
-        self.context, self.added_cond_kwargs = self.change_cond(self.prompt, self.negative_prompt)
-
     def run_generation(self, latent, guidance_scale=None, min_i=None, max_i=None):
         context, added_cond_kwargs = self.change_cond(self.prompt, self.negative_prompt, latent.shape[0])
         # context, added_cond_kwargs = self.context, self.added_cond_kwargs
@@ -114,17 +127,30 @@ class DiffusionExtractor(nn.Module):
         )
         return xs
 
+    @staticmethod
+    def init_unet(unet, save_mode, reset=True, idxs=None):
+        block_type, feat_specifier = save_mode.split("_")
+        if block_type == "resnet":
+            init_resnet_func(unet, save_mode=feat_specifier, reset=reset, idxs=idxs)
+        elif block_type == "block":
+            init_unet_block_func(unet, save_mode=feat_specifier, reset=reset, idxs=idxs)
+        elif block_type == "crossattn":
+            init_cross_attn_func(unet, save_mode=feat_specifier, reset=reset, idxs=idxs)
+        else:
+            raise NotImplementedError(f"Block type {block_type} not supported.")
+
     def get_feats(self, latents, extractor_fn, preview_mode=False):
         if not preview_mode:
-            init_resnet_func(self.unet, save_mode=self.save_mode, reset=True, idxs=self.idxs)
+            self.init_unet(self.unet, self.save_mode, reset=True, idxs=self.idxs)
         # NOTE: this line actually runs the unet denoising, and features are saved as resblock.feats
         outputs = extractor_fn(latents)
         if not preview_mode:
-            feats = rg_helpers.collect_and_resize_feats(self.model, self.idxs, self.output_resolution)
+            feats = rg_helpers.collect_and_resize_feats(self.model, self.idxs, self.collect_feats_fn, self.output_resolution)
             # convert feats to [batch_size, num_timesteps, channels, w, h]
             feats = feats[..., None] # since there is only 1 time step, l=layer, s=timestep
             feats = einops.rearrange(feats, 'b w h l s -> b s l w h')
-            init_resnet_func(self.unet, reset=True)
+            save_mode = self.save_mode.split("_")[0] + "_"
+            self.init_unet(self.unet, save_mode, reset=True)
         else:
             feats = None
         return feats, outputs
@@ -132,7 +158,7 @@ class DiffusionExtractor(nn.Module):
     @torch.inference_mode()
     def forward(
         self, images, guidance_scale: Optional[int] = None,
-        preview_mode: bool = False, eval_mode: bool = False,
+        preview_mode: bool = False, eval_mode: bool = True,
         save_timestep: Optional[int] = None
     ):
         self.eval()
@@ -157,3 +183,34 @@ class DiffusionExtractor(nn.Module):
             emb = None
 
         return feats, outputs, emb
+
+
+def collect_channels(extractor):
+    # do a dry run to collect the number of channels of each layer specified by idxs
+    # this is not optimal but it works
+    orig_device = extractor.model.device
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    extractor.eval()
+    extractor.to(device)
+    fake_latent = torch.randn(
+        1, extractor.unet.config.in_channels, extractor.latent_height, extractor.latent_width,
+        device=device
+    )
+    with torch.autocast(device_type="cuda"):
+        extractor.init_unet(extractor.unet, extractor.save_mode, reset=True, idxs=extractor.idxs)
+        feats = extractor.run_generation(fake_latent, min_i=999, max_i=1000)
+        feats = extractor.collect_feats_fn(extractor.unet, extractor.idxs)
+    extractor.to(orig_device)
+    dims = [get_channels(feat) for feat in feats]
+    return dims
+
+
+def get_channels(feat):
+    c = None
+    if len(feat.shape) == 4:
+        c = feat.shape[1] # b c h w
+    elif len(feat.shape) == 3:
+        c = feat.shape[-1] # b (h w) c
+    else:
+        raise NotImplementedError(f"Shape {feat.shape} not supported.")
+    return c

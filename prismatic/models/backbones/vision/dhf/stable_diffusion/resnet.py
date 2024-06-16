@@ -107,11 +107,11 @@ def collect_layers(unet, idxs=None):
             layer_idx += 1
     return layers
 
-def collect_feats(unet, idxs=None):
+def collect_resnet_feats(unet, idxs=None):
     return [module.feats for module in collect_layers(unet, idxs)]
 
-def collect_channels(unet, idxs=None):
-    return [module.time_emb_proj.out_features for module in collect_layers(unet, idxs)]
+# def collect_channels(unet, idxs=None):
+#     return [module.time_emb_proj.out_features for module in collect_layers(unet, idxs)]
 
 def collect_hws(unet, idxs=None):
     return [module.hws for module in collect_layers(unet, idxs)]

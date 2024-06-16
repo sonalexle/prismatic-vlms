@@ -58,6 +58,8 @@ VISION_BACKBONES = {
     # === SD Backbones ===
     "sd1.5-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224}},
     "sd1.5-single-layer-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224, "config_ver": "single-layer"}},
+    "sd1.5-upblock-outputs-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224, "config_ver": "upblock-outputs"}},
+    "sd1.5-crossattn-query-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224, "config_ver": "crossattn-query"}},
     "sdxl-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224, "model_id": "stabilityai/stable-diffusion-xl-base-1.0"}},
 }
 

@@ -5,8 +5,7 @@ from functools import partial
 import torch
 import einops
 from torchvision import transforms as T
-from torch.nn import functional as F
-from torch.distributed.fsdp.wrap import size_based_auto_wrap_policy, lambda_auto_wrap_policy, always_wrap_policy, _module_wrap_policy
+from torch.distributed.fsdp.wrap import _module_wrap_policy
 
 from prismatic.models.backbones.vision.dhf.diffusion_extractor import DiffusionExtractor
 from prismatic.models.backbones.vision.dhf.aggregation_network import AggregationNetwork
@@ -39,14 +38,20 @@ def get_sd_backbone_default_config():
 
 def get_sd_backbone_single_layer_config():
     return {
-        'num_timesteps': 1000,
-        'save_timestep': 999,
-        'prompt': '',
-        'negative_prompt': '',
-        'guidance_scale': -1,
-        'output_resolution': 16,
-        'use_time_emb': False,
         'idxs': '[3]',
+    }
+
+
+def get_sd_backbone_upblock_outputs_config():
+    return {
+        'save_mode': 'block_output',
+        'idxs': '[0,1]'
+    }
+
+def get_sd_backbone_crossattn_config():
+    return {
+        'save_mode': 'crossattn_query',
+        'idxs': '[1,4,7]'
     }
 
 
@@ -56,13 +61,18 @@ class SDBackbone(VisionBackbone):
             model_id: str = 'runwayml/stable-diffusion-v1-5', config_ver="default"
         ) -> None:
         super().__init__(vision_backbone_id, image_resize_strategy, default_image_size=default_image_size)
+        config = get_sd_backbone_default_config()
         if config_ver == "default":
-            config = get_sd_backbone_default_config()
+            pass
         elif config_ver == "single-layer":
-            config = get_sd_backbone_single_layer_config()
+            config.update(get_sd_backbone_single_layer_config())
+        elif config_ver == "upblock-outputs":
+            config.update(get_sd_backbone_upblock_outputs_config())
+        elif config_ver == "crossattn-query":
+            config.update(get_sd_backbone_crossattn_config())
         else:
             raise NotImplementedError(config_ver)
-        config.update({'model_id': model_id})
+        config["model_id"] = model_id
         self.use_resampler: bool = config.pop('use_resampler', False)
         self.use_aggregation_net: bool = False # NOTE: this is set during projector initialization
         self.diffusion_extractor = DiffusionExtractor(**config)

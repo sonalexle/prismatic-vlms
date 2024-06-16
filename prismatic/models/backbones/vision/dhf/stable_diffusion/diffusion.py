@@ -20,7 +20,6 @@
 # =================================================================
 
 import torch
-from diffusers import DiffusionPipeline
 from prismatic.models.backbones.vision.dhf.stable_diffusion.resnet import set_timestep
 
 """
@@ -140,20 +139,3 @@ def generalized_steps(x, model, scheduler, **kwargs):
 def freeze_weights(weights):
     for param in weights.parameters():
         param.requires_grad = False
-
-def init_models(
-    device="cuda",
-    model_id="runwayml/stable-diffusion-v1-5",
-    freeze=True,
-    dtype=torch.float16
-):
-    pipe = DiffusionPipeline.from_pretrained(
-        model_id,
-        torch_dtype=dtype,
-    )
-    pipe = pipe.to(device)
-    if freeze:
-        freeze_weights(pipe.unet)
-        freeze_weights(pipe.vae)
-        freeze_weights(pipe.text_encoder)
-    return pipe
