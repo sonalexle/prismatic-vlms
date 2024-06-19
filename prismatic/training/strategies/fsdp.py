@@ -25,6 +25,7 @@ from torch.distributed.fsdp import (
     MixedPrecision,
     ShardingStrategy,
     StateDictType,
+    CPUOffload
 )
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 from torch.optim import AdamW
@@ -157,6 +158,7 @@ class FSDPStrategy(TrainingStrategy):
             mixed_precision=fsdp_precision_policy,
             sharding_strategy=self.fsdp_sharding_strategy,
             device_id=torch.cuda.current_device(),
+            # cpu_offload=CPUOffload(offload_params=True),
             limit_all_gathers=True,
             use_orig_params=True,
         )

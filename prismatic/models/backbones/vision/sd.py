@@ -28,7 +28,6 @@ def get_sd_backbone_default_config():
         'prompt': '',
         'negative_prompt': '',
         'guidance_scale': -1,
-        'output_resolution': 16,
         'use_time_emb': False,
         'idxs': '[2, 3]',
         # "idxs": "[2,3,8,10]"
@@ -38,20 +37,30 @@ def get_sd_backbone_default_config():
 
 def get_sd_backbone_single_layer_config():
     return {
+        'output_resolution': 16,
         'idxs': '[3]',
     }
 
 
 def get_sd_backbone_upblock_outputs_config():
     return {
+        'output_resolution': 16,
         'save_mode': 'block_output',
         'idxs': '[0,1]'
     }
 
 def get_sd_backbone_crossattn_config():
     return {
+        'output_resolution': 16,
         'save_mode': 'crossattn_query',
         'idxs': '[1,4,7]'
+    }
+
+def get_sd_backbone_monkey_config():
+    return {
+        'save_mode': 'crossattn_query',
+        'idxs': '[1,4,7]',
+        'use_resampler': True,
     }
 
 
@@ -70,6 +79,8 @@ class SDBackbone(VisionBackbone):
             config.update(get_sd_backbone_upblock_outputs_config())
         elif config_ver == "crossattn-query":
             config.update(get_sd_backbone_crossattn_config())
+        elif config_ver == "monkey":
+            config.update(get_sd_backbone_monkey_config())
         else:
             raise NotImplementedError(config_ver)
         config["model_id"] = model_id

@@ -567,6 +567,13 @@ class SD_V1_5_CrossAttn_Query_224px_Phi3(SD_V1_5_224px_Phi3):
 
 
 @dataclass
+class SD_v1_5_Monkey_224px_Phi3(SD_V1_5_224px_Phi3):
+    model_id: str = "sd1.5-monkey-224px-phi3+4b"
+    vision_backbone_id: str = "sd1.5-monkey-224px"
+    arch_specifier: str = "monkey-resampler"
+
+
+@dataclass
 class SDXL_224px(Exp_7B_One_Stage):
     model_id: str = "sdxl-224px-phi3+4b"
     vision_backbone_id: str = "sdxl-224px"
@@ -665,6 +672,7 @@ class ModelRegistry(Enum):
     SDV15_UPBLOCK_OUTPUTS_224PX_PHI3 = SD_V1_5_Upblock_Outputs_224px_Phi3
     SDV15_CROSSATTN_QUERY_224PX_PHI3 = SD_V1_5_CrossAttn_Query_224px_Phi3
     SDV15_224PX_PHI3 = SD_V1_5_224px_Phi3
+    SDV15_MONKEY_224PX_PHI3 = SD_v1_5_Monkey_224px_Phi3
     SDXL_224PX = SDXL_224px
 
     @property

@@ -26,7 +26,7 @@ from prismatic.models.backbones.llm.prompting import PromptBuilder
 from prismatic.models.backbones.vision import VisionBackbone
 from prismatic.models.vlms.base_vlm import VLM
 from prismatic.overwatch import initialize_overwatch
-from prismatic.util.nn_utils import FusedMLPProjector, LinearProjector, MLPProjector, IdentityProjector, AggregationNetwork
+from prismatic.util.nn_utils import FusedMLPProjector, LinearProjector, MLPProjector, IdentityProjector, AggregationNetwork, MonkeyResampler
 
 # Initialize Overwatch =>> Wraps `logging.Logger`
 overwatch = initialize_overwatch(__name__)
@@ -67,6 +67,12 @@ class PrismaticVLM(VLM):
             self.projector = MLPProjector(vision_backbone.embed_dim, llm_backbone.embed_dim)
         elif "identity" in arch_specifier:
             self.projector = IdentityProjector(vision_backbone.embed_dim, llm_backbone.embed_dim)
+        elif "monkey-resampler" in arch_specifier:
+            self.projector = MonkeyResampler(
+                grid_size=int(math.sqrt(vision_backbone.num_patches)),
+                embed_dim=llm_backbone.embed_dim,
+                kv_dim=vision_backbone.embed_dim
+            )
         elif "aggregation" in arch_specifier:
             # NOTE: we don't pass `vision_backbone.embed_dim` here
             self.projector = AggregationNetwork(
@@ -254,7 +260,7 @@ class PrismaticVLM(VLM):
         # Get Prismatic Wrapping Policy =>> just a module wrapping policy around `self.projector`
         prismatic_fsdp_wrapping_policy = partial(
             _module_wrap_policy,
-            module_classes={LinearProjector, MLPProjector, FusedMLPProjector, AggregationNetwork},
+            module_classes={LinearProjector, MLPProjector, FusedMLPProjector, AggregationNetwork, MonkeyResampler},
         )
 
         # Return union (_or_) over constituent policies
