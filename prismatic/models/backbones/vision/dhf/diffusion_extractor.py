@@ -182,7 +182,7 @@ class DiffusionExtractor(nn.Module):
         else:
             emb = None
 
-        return feats, outputs, emb
+        return feats, emb
 
 
 def collect_channels(extractor):

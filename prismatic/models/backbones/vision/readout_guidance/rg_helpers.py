@@ -141,16 +141,6 @@ def get_prompts_latents(pipeline, prompt, batch_size, seed, latent_dim, device, 
 # =========================================
 #    Features, Latents, and Text Context
 # =========================================
-# def resize(x, old_res, new_res, mode):
-#     # (batch_size, width * height, channels)
-#     batch_size, size, channels = x.shape
-#     x = x.reshape((batch_size, *old_res, channels))
-#     x = einops.rearrange(x, 'b h w c -> b c h w')
-#     x = torch.nn.functional.interpolate(x, size=new_res, mode=mode)
-#     x = einops.rearrange(x, 'b c h w -> b h w c')
-#     return x
-
-
 def resize_feat(feat, new_res, resize_mode="bilinear"):
     # check if the feat is actually a 4D tensor
     if len(feat.shape) == 4:

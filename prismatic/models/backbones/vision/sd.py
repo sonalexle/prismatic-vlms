@@ -8,17 +8,19 @@ from torchvision import transforms as T
 from torch.distributed.fsdp.wrap import _module_wrap_policy
 
 from prismatic.models.backbones.vision.dhf.diffusion_extractor import DiffusionExtractor
-from prismatic.models.backbones.vision.dhf.aggregation_network import AggregationNetwork
-from prismatic.models.backbones.vision.base_vision import ImageTransform, LetterboxPad, VisionBackbone, unpack_tuple
+from prismatic.models.backbones.vision.base_vision import VisionBackbone
 
 
 def get_default_sd_transform(res: int = 512):
-    normalize = T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    return T.Compose([
-        T.Resize((res,res), T.InterpolationMode.BICUBIC, antialias=True),
-        T.ToTensor(),
-        normalize
-    ])
+    # https://github.com/huggingface/diffusers/blob/main/examples/text_to_image/train_text_to_image.py#L779
+    t = T.Compose(
+        [
+            T.Resize((res,res), interpolation=T.InterpolationMode.BILINEAR),
+            T.ToTensor(),
+            T.Normalize([0.5], [0.5]),
+        ]
+    )
+    return t
 
 
 def get_sd_backbone_default_config():
@@ -30,15 +32,15 @@ def get_sd_backbone_default_config():
         'guidance_scale': -1,
         'use_time_emb': False,
         'idxs': '[2, 3]',
-        # "idxs": "[2,3,8,10]"
-        # 'use_resampler': True,
+        'save_mode': 'resnet_hidden',
     }
 
 
 def get_sd_backbone_single_layer_config():
     return {
         'output_resolution': 16,
-        'idxs': '[3]',
+        'save_mode': 'resnet_hidden',
+        'idxs': '[3]', # SD1.5 0-11 (recommended: 2, 5, 8), SDXL 0-8 (rec: 2, 5)
     }
 
 
@@ -46,14 +48,14 @@ def get_sd_backbone_upblock_outputs_config():
     return {
         'output_resolution': 16,
         'save_mode': 'block_output',
-        'idxs': '[0,1]'
+        'idxs': '[0,1]' # SD1.5 0-3 SDXL 0-2
     }
 
 def get_sd_backbone_crossattn_config():
     return {
         'output_resolution': 16,
         'save_mode': 'crossattn_query',
-        'idxs': '[1,4,7]'
+        'idxs': '[1,4,7]' # SD1.5 0-8, SDXL 0-35
     }
 
 def get_sd_backbone_monkey_config():
@@ -85,7 +87,6 @@ class SDBackbone(VisionBackbone):
             raise NotImplementedError(config_ver)
         config["model_id"] = model_id
         self.use_resampler: bool = config.pop('use_resampler', False)
-        self.use_aggregation_net: bool = False # NOTE: this is set during projector initialization
         self.diffusion_extractor = DiffusionExtractor(**config)
         self.use_time_emb: bool = self.diffusion_extractor.use_time_emb # this also controls how the projector is initialized
         self.eval_mode: bool = True # controls fixed (True) or random timestep (False) sampling
@@ -99,13 +100,11 @@ class SDBackbone(VisionBackbone):
 
     def forward(self, pixel_values: torch.Tensor) -> torch.Tensor:
         self.eval_mode = True
-        feats, _, time_emb = self.diffusion_extractor(pixel_values, eval_mode=self.eval_mode)
+        feats, time_emb = self.diffusion_extractor(pixel_values, eval_mode=self.eval_mode)
         feats = feats.clone() # inference tensors cannot be saved for backward, need to create a copy
-        feats = einops.rearrange(feats, 'b s l w h -> b (s l) w h') # s is timesteps, l is layers
-        if not self.use_aggregation_net:
-            # permute to [batch_size, w, h, channels] and reshape to [batch_size, w*h, channels] using einops
-            feats = einops.rearrange(feats, 'b c w h -> b (w h) c')
-        elif self.use_time_emb:
+        # permute to [batch_size, w, h, channels] and reshape to [batch_size, w*h, channels] using einops
+        feats = einops.rearrange(feats, 'b s l h w -> b (h w) (s l)') # s is timesteps, l is layers, collapse them
+        if self.use_time_emb:
             feats = feats, time_emb.clone()
         return feats
 

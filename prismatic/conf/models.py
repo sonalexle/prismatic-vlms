@@ -522,11 +522,6 @@ class SD_V1_5_224px_Phi2(LLaVa_v15_Reproduction_7B):
     image_resize_strategy: str = "resize-naive"
     arch_specifier: str = "aggregation"
     llm_backbone_id: str = "phi-2-3b"
-    # align_global_batch_size: int = 64
-    # align_per_device_batch_size: int = 8
-    # finetune_global_batch_size: int = 32
-    # finetune_per_device_batch_size: int = 4
-    # use_half_precision_all: bool = True
 
 
 @dataclass
@@ -542,7 +537,6 @@ class SD_V1_5_224px_Phi3(LLaVa_v15_Reproduction_7B):
     finetune_global_batch_size: int = 32
     finetune_per_device_batch_size: int = 4
     finetune_train_strategy: str = "fsdp-full-shard"
-    # use_half_precision_all: bool = True
 
 
 @dataclass
@@ -583,7 +577,6 @@ class SDXL_224px(Exp_7B_One_Stage):
     # llm_max_length = 2048
     finetune_global_batch_size: int = 1
     finetune_per_device_batch_size: int = 1
-    # use_half_precision_all: bool = True
 
 
 # === Define a Model Registry Enum for Reference & Validation ===

@@ -26,7 +26,14 @@ from prismatic.models.backbones.llm.prompting import PromptBuilder
 from prismatic.models.backbones.vision import VisionBackbone
 from prismatic.models.vlms.base_vlm import VLM
 from prismatic.overwatch import initialize_overwatch
-from prismatic.util.nn_utils import FusedMLPProjector, LinearProjector, MLPProjector, IdentityProjector, AggregationNetwork, MonkeyResampler
+from prismatic.util.nn_utils import (
+    FusedMLPProjector,
+    LinearProjector,
+    MLPProjector,
+    IdentityProjector,
+    AggregationNetwork,
+    MonkeyResampler
+)
 
 # Initialize Overwatch =>> Wraps `logging.Logger`
 overwatch = initialize_overwatch(__name__)
@@ -58,7 +65,6 @@ class PrismaticVLM(VLM):
 
         # Initialize Projection (Adapter) based on `arch_specifier`
         self.arch_specifier = arch_specifier
-        vision_backbone.use_aggregation_net = False
         if arch_specifier == "linear":
             self.projector = LinearProjector(vision_backbone.embed_dim, llm_backbone.embed_dim)
         elif arch_specifier.endswith("fused-gelu-mlp"):
@@ -83,10 +89,12 @@ class PrismaticVLM(VLM):
                 final_resolution=int(math.sqrt(vision_backbone.num_patches)),
                 input_resolution=vision_backbone.output_resolution
             )
-            vision_backbone.use_aggregation_net = True
             overwatch.info(f"Aggregation Network Projection Enabled, #params: {self.projector.get_num_params()}")
         else:
             raise ValueError(f"PrismaticVLM with `{arch_specifier = }` is not supported!")
+
+        projector_num_params = sum(p.numel() for p in self.projector.parameters())
+        overwatch.info(f"Projection Module `{self.projector.__class__.__name__}` has {projector_num_params} parameters")
 
         # Trackers
         self.vision_backbone_requires_grad = False

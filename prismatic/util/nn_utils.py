@@ -45,7 +45,7 @@ class MLPProjector(nn.Module):
 class FusedMLPProjector(nn.Module):
     def __init__(self, fused_vision_dim: int, llm_dim: int, mlp_type: str = "fused-gelu-mlp") -> None:
         super().__init__()
-        self.initial_projection_dim = fused_vision_dim * 4
+        self.initial_projection_dim = fused_vision_dim * 4 if fused_vision_dim * 4 < 10000 else llm_dim * 2
         if mlp_type == "fused-gelu-mlp":
             self.projector = nn.Sequential(
                 nn.Linear(fused_vision_dim, self.initial_projection_dim, bias=True),

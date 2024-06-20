@@ -203,6 +203,9 @@ class AggregationNetwork(nn.Module):
         """
         Assumes batch is shape (B, C, H, W) where C is the concatentation of all layer features.
         """
+        if len(batch.shape) == 3:
+            h = w = int(np.sqrt(batch.shape[1])) # assume square image
+            batch = einops.rearrange(batch, 'b (h w) c -> b c h w', h=h, w=w)
         output_feature = None
         start = 0
         mixing_weights = torch.nn.functional.softmax(self.mixing_weights, dim=0)

@@ -20,6 +20,7 @@ from prismatic.models.backbones.vision import (
     CLIPViTBackbone,
     DinoCLIPViTBackbone,
     DinoSigLIPViTBackbone,
+    DinoSigLIPSDViTBackbone,
     DinoV2ViTBackbone,
     ImageTransform,
     IN1KViTBackbone,
@@ -40,6 +41,7 @@ VISION_BACKBONES = {
     "dinov2-vit-l": {"cls": DinoV2ViTBackbone, "kwargs": {"default_image_size": 224}},
     "in1k-vit-l": {"cls": IN1KViTBackbone, "kwargs": {"default_image_size": 224}},
     "dinosiglip-vit-so-224px": {"cls": DinoSigLIPViTBackbone, "kwargs": {"default_image_size": 224}},
+    "dinosiglipsd-vit-so-224px": {"cls": DinoSigLIPSDViTBackbone, "kwargs": {"default_image_size": 224}},
 
     # === Assorted CLIP Backbones ===
     "clip-vit-b": {"cls": CLIPViTBackbone, "kwargs": {"default_image_size": 224}},
@@ -54,6 +56,7 @@ VISION_BACKBONES = {
     # === Fused Backbones ===
     "dinoclip-vit-l-336px": {"cls": DinoCLIPViTBackbone, "kwargs": {"default_image_size": 336}},
     "dinosiglip-vit-so-384px": {"cls": DinoSigLIPViTBackbone, "kwargs": {"default_image_size": 384}},
+    "dinosiglipsd-vit-so-384px": {"cls": DinoSigLIPSDViTBackbone, "kwargs": {"default_image_size": 384}},
 
     # === SD Backbones ===
     "sd1.5-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224}},
