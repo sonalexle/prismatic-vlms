@@ -17,6 +17,7 @@ import einops
 import numpy as np
 from PIL import Image
 import torch
+from torch.nn import functional as F
 from typing import Optional, List, Tuple
 
 from diffusers import (
@@ -141,10 +142,10 @@ def get_prompts_latents(pipeline, prompt, batch_size, seed, latent_dim, device, 
 # =========================================
 #    Features, Latents, and Text Context
 # =========================================
-def resize_feat(feat, new_res, resize_mode="bilinear"):
+def resize_feat(feat, new_res, resize_mode="bilinear", adaptive_avg_pool=False):
     # check if the feat is actually a 4D tensor
     if len(feat.shape) == 4:
-        pass # feat shape (b c h w)
+        old_res = feat.shape[-1] # feat shape (b c h w)
     elif len(feat.shape) == 3: # then we are dealing with a flattened feature
         old_res = feat.shape[1] ** 0.5 # feat shape (b hw c)
         assert old_res.is_integer(), "Feature shape is not square"
@@ -153,7 +154,10 @@ def resize_feat(feat, new_res, resize_mode="bilinear"):
     else:
         raise ValueError(f"Feature shape {feat.shape} not supported.")
 
-    feat = torch.nn.functional.interpolate(feat, size=new_res, mode=resize_mode)
+    if new_res < old_res and adaptive_avg_pool:
+        feat = F.adaptive_avg_pool2d(feat, new_res)
+    else:
+        feat = F.interpolate(feat, size=new_res, mode=resize_mode)
     feat = einops.rearrange(feat, 'b c h w -> b h w c')
 
     return feat
