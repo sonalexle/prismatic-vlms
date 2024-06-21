@@ -31,7 +31,7 @@ def get_sd_backbone_default_config():
         'negative_prompt': '',
         'guidance_scale': -1,
         'use_time_emb': False,
-        'idxs': '[2, 3]',
+        'idxs': '[2,3]', # SD1.5 0-11 (recommended: 2, 5, 8), SDXL 0-8 (rec: 2, 5)
         'save_mode': 'resnet_hidden',
     }
 
@@ -40,7 +40,7 @@ def get_sd_backbone_single_layer_config():
     return {
         'output_resolution': 16,
         'save_mode': 'resnet_hidden',
-        'idxs': '[3]', # SD1.5 0-11 (recommended: 2, 5, 8), SDXL 0-8 (rec: 2, 5)
+        'idxs': '[3]',
     }
 
 
@@ -50,6 +50,15 @@ def get_sd_backbone_upblock_outputs_config():
         'save_mode': 'block_output',
         'idxs': '[0,1]' # SD1.5 0-3 SDXL 0-2
     }
+
+
+def get_sd_backbone_resnet_outputs_config():
+    return {
+        'output_resolution': 16,
+        'save_mode': 'resnet_output',
+        'idxs': '[2,5,8]',
+    }
+
 
 def get_sd_backbone_crossattn_config():
     return {
@@ -76,15 +85,18 @@ class SDBackbone(VisionBackbone):
         if config_ver == "default":
             pass
         elif config_ver == "single-layer":
-            config.update(get_sd_backbone_single_layer_config())
+            new_config = get_sd_backbone_single_layer_config()
         elif config_ver == "upblock-outputs":
-            config.update(get_sd_backbone_upblock_outputs_config())
+            new_config = get_sd_backbone_upblock_outputs_config()
+        elif config_ver == "resnet-outputs":
+            new_config = get_sd_backbone_resnet_outputs_config()
         elif config_ver == "crossattn-query":
-            config.update(get_sd_backbone_crossattn_config())
+            new_config = get_sd_backbone_crossattn_config()
         elif config_ver == "monkey":
-            config.update(get_sd_backbone_monkey_config())
+            new_config = get_sd_backbone_monkey_config()
         else:
             raise NotImplementedError(config_ver)
+        config.update(new_config)
         config["model_id"] = model_id
         self.use_resampler: bool = config.pop('use_resampler', False)
         self.diffusion_extractor = DiffusionExtractor(**config)

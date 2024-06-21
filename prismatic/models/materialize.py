@@ -21,6 +21,7 @@ from prismatic.models.backbones.vision import (
     DinoCLIPViTBackbone,
     DinoSigLIPViTBackbone,
     DinoSigLIPSDViTBackbone,
+    SigLIPSDViTBackbone,
     DinoV2ViTBackbone,
     ImageTransform,
     IN1KViTBackbone,
@@ -42,6 +43,7 @@ VISION_BACKBONES = {
     "in1k-vit-l": {"cls": IN1KViTBackbone, "kwargs": {"default_image_size": 224}},
     "dinosiglip-vit-so-224px": {"cls": DinoSigLIPViTBackbone, "kwargs": {"default_image_size": 224}},
     "dinosiglipsd-vit-so-224px": {"cls": DinoSigLIPSDViTBackbone, "kwargs": {"default_image_size": 224}},
+    "siglipsd-vit-so-224px": {"cls": SigLIPSDViTBackbone, "kwargs": {"default_image_size": 224}},
 
     # === Assorted CLIP Backbones ===
     "clip-vit-b": {"cls": CLIPViTBackbone, "kwargs": {"default_image_size": 224}},
@@ -57,11 +59,13 @@ VISION_BACKBONES = {
     "dinoclip-vit-l-336px": {"cls": DinoCLIPViTBackbone, "kwargs": {"default_image_size": 336}},
     "dinosiglip-vit-so-384px": {"cls": DinoSigLIPViTBackbone, "kwargs": {"default_image_size": 384}},
     "dinosiglipsd-vit-so-384px": {"cls": DinoSigLIPSDViTBackbone, "kwargs": {"default_image_size": 384}},
+    "siglipsd-vit-so-384px": {"cls": SigLIPSDViTBackbone, "kwargs": {"default_image_size": 384}},
 
     # === SD Backbones ===
     "sd1.5-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224}},
     "sd1.5-single-layer-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224, "config_ver": "single-layer"}},
     "sd1.5-upblock-outputs-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224, "config_ver": "upblock-outputs"}},
+    "sd1.5-resnet-outputs-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224, "config_ver": "resnet-outputs"}},
     "sd1.5-crossattn-query-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224, "config_ver": "crossattn-query"}},
     "sd1.5-monkey-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224, "config_ver": "monkey"}},
     "sdxl-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224, "model_id": "stabilityai/stable-diffusion-xl-base-1.0"}},
