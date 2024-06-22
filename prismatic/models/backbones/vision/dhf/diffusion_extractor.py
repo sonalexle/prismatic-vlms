@@ -26,7 +26,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 from typing import Optional, List
-from PIL import Image
 
 from prismatic.models.backbones.vision.dhf.stable_diffusion.diffusion import generalized_steps
 from prismatic.models.backbones.vision.dhf.stable_diffusion.resnet import init_resnet_func, collect_resnet_feats
@@ -69,6 +68,7 @@ class DiffusionExtractor(nn.Module):
         self.latent_height = self.latent_width = self.unet.config.sample_size
         self.load_resolution = self.height
         self.output_resolution = config.pop("output_resolution", self.latent_height)
+        self.adaptive_avg_pool = config.pop("adaptive_avg_pool", False)
 
         ## Hyperparameters ##
         self.diffusion_mode: str = config.pop("diffusion_mode", "generation")
@@ -145,7 +145,13 @@ class DiffusionExtractor(nn.Module):
         # NOTE: this line actually runs the unet denoising, and features are saved as resblock.feats
         outputs = extractor_fn(latents)
         if not preview_mode:
-            feats = rg_helpers.collect_and_resize_feats(self.model, self.idxs, self.collect_feats_fn, self.output_resolution)
+            feats = rg_helpers.collect_and_resize_feats(
+                self.model,
+                self.idxs,
+                self.collect_feats_fn,
+                self.output_resolution,
+                self.adaptive_avg_pool
+            )
             # convert feats to [batch_size, num_timesteps, channels, w, h]
             feats = feats[..., None] # since there is only 1 time step, l=layer, s=timestep
             feats = einops.rearrange(feats, 'b w h l s -> b s l w h')

@@ -66,6 +66,7 @@ VISION_BACKBONES = {
     "sd1.5-single-layer-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224, "config_ver": "single-layer"}},
     "sd1.5-upblock-outputs-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224, "config_ver": "upblock-outputs"}},
     "sd1.5-resnet-outputs-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224, "config_ver": "resnet-outputs"}},
+    "sd1.5-resnet-hidden-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224, "config_ver": "resnet-hidden"}},
     "sd1.5-crossattn-query-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224, "config_ver": "crossattn-query"}},
     "sd1.5-monkey-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224, "config_ver": "monkey"}},
     "sdxl-224px": {"cls": SDBackbone, "kwargs": {"default_image_size": 224, "model_id": "stabilityai/stable-diffusion-xl-base-1.0"}},

@@ -157,13 +157,14 @@ def resize_feat(feat, new_res, resize_mode="bilinear", adaptive_avg_pool=False):
     if new_res < old_res and adaptive_avg_pool:
         feat = F.adaptive_avg_pool2d(feat, new_res)
     else:
-        feat = F.interpolate(feat, size=new_res, mode=resize_mode)
+        feat = F.interpolate(feat, size=(new_res,new_res), mode=resize_mode)
+
     feat = einops.rearrange(feat, 'b c h w -> b h w c')
 
     return feat
 
 
-def collect_and_resize_feats(model, idxs, collect_feats_fn, latent_dim=None):
+def collect_and_resize_feats(model, idxs, collect_feats_fn, latent_dim=None, adaptive_avg_pool=False):
     if model is None:
         return None
     feature_store = {"up": collect_feats_fn(model.unet, idxs=idxs)}
@@ -171,7 +172,7 @@ def collect_and_resize_feats(model, idxs, collect_feats_fn, latent_dim=None):
     max_feat_res = max([feat.shape[-1] for feat in feature_store["up"]]) if latent_dim is None else latent_dim
     for key in feature_store:
         for i, feat in enumerate(feature_store[key]):
-            feat = resize_feat(feat, new_res=(max_feat_res, max_feat_res))
+            feat = resize_feat(feat, new_res=max_feat_res, adaptive_avg_pool=adaptive_avg_pool)
             feats.append(feat)
     # Concatenate all layers along the channel
     # dimension to get shape (b s d)
@@ -180,6 +181,7 @@ def collect_and_resize_feats(model, idxs, collect_feats_fn, latent_dim=None):
     else:
         feats = None
     return feats
+
 
 def image_to_tensor(image: Image.Image) -> torch.Tensor:
     image = image.convert("RGB")
