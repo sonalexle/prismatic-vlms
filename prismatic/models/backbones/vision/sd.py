@@ -39,11 +39,16 @@ SD_BACKBONE_CONFIGS = {
         'save_mode': 'resnet_output',
         'idxs': '[2,5,8]',
     },
+    "resnet-adaptive": {
+        'save_mode': 'resnet_output',
+        'idxs': '[2,5,8]',
+        'adaptive_avg_pool': True
+    },
     "crossattn-query": {
         'save_mode': 'crossattn_query',
         'idxs': '[1,4,7]' # SD1.5 0-8, SDXL 0-35
     },
-    "monkey": {
+    "monkey": { # this is bad, monkey connector is bad
         'save_mode': 'crossattn_query',
         'idxs': '[1,4,7]',
         'use_resampler': True,

@@ -149,8 +149,8 @@ class DiffusionExtractor(nn.Module):
                 self.model,
                 self.idxs,
                 self.collect_feats_fn,
-                self.output_resolution,
-                self.adaptive_avg_pool
+                latent_dim=self.output_resolution,
+                adaptive_avg_pool=self.adaptive_avg_pool
             )
             # convert feats to [batch_size, num_timesteps, channels, w, h]
             feats = feats[..., None] # since there is only 1 time step, l=layer, s=timestep
